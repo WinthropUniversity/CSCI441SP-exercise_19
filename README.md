@@ -35,8 +35,6 @@ The client uses `const API_URL = '/api/books'` — a relative path. This is inte
 ## Part 1 — Push the Book App to GitHub
 
 Make sure you have access to this repository.
-```
-
 ---
 
 ## Part 2 — Launch an EC2 Instance
