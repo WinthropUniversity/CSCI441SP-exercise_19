@@ -594,3 +594,113 @@ When the lab is graded, stop or terminate your instance:
 
 ---
 
+#Windows Setup Guide: SSH & EC2 Deployment
+
+
+## Overview
+
+Windows 10 and 11 ship with OpenSSH built in, so you can connect to EC2 directly from PowerShell without installing any additional tools. The key differences from the macOS/Linux instructions in the main lab README are:
+
+- File paths use backslashes and start with `C:\Users\<YourUsername>\`
+- `chmod` does not exist — Windows uses `icacls` to set file permissions
+- `mv` is `Move-Item` in PowerShell
+- `nano` is a Linux editor — on your local machine you use Notepad or VS Code instead
+
+Once you are SSH'd into the EC2 server, you are inside Linux — all the `nano`, `chmod`, `ls`, and other Linux commands in the lab README work normally from that point on.
+
+---
+
+## Part 1 — Verify OpenSSH is Installed
+
+Open **PowerShell** (press the Windows key, type `powershell`, press Enter) and run:
+
+```powershell
+ssh -V
+```
+
+You should see something like `OpenSSH_for_Windows_8.x`. If you get a "command not found" error, install it:
+
+1. Go to **Settings → System → Optional Features**
+2. Click **Add a feature**
+3. Search for **OpenSSH Client**
+4. Click Install, then restart PowerShell
+
+---
+
+## Part 2 — Move and Secure the Key File
+
+When AWS creates your EC2 instance, it downloads a `.pem` key file to your Downloads folder. You need to move it somewhere permanent and restrict who can read it. SSH refuses to use a key file that is readable by other accounts on your machine.
+
+### Step 2.1 — Create the .ssh folder
+
+```powershell
+New-Item -ItemType Directory -Path "$env:USERPROFILE\.ssh" -Force
+```
+
+`$env:USERPROFILE` expands to `C:\Users\<YourUsername>` automatically — you do not need to type your username.
+
+### Step 2.2 — Move the key file
+
+```powershell
+Move-Item "$env:USERPROFILE\Downloads\book-app-key.pem" "$env:USERPROFILE\.ssh\book-app-key.pem"
+```
+
+Verify it moved:
+
+```powershell
+dir "$env:USERPROFILE\.ssh"
+```
+
+You should see `book-app-key.pem` in the output.
+
+### Step 2.3 — Fix file permissions
+
+This is the Windows equivalent of `chmod 400`. Run both commands:
+
+```powershell
+# Remove all inherited permissions from the file
+icacls "$env:USERPROFILE\.ssh\book-app-key.pem" /inheritance:r
+
+# Grant only your own account read access
+icacls "$env:USERPROFILE\.ssh\book-app-key.pem" /grant:r "$env:USERNAME:R"
+```
+
+Verify the result:
+
+```powershell
+icacls "$env:USERPROFILE\.ssh\book-app-key.pem"
+```
+
+The output should show only your username with `(R)`. If any other accounts appear, re-run the two commands above.
+
+---
+
+## Part 3 — Connect to the EC2 Server
+
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\book-app-key.pem" ubuntu@<YOUR-PUBLIC-IP>
+```
+
+Replace `<YOUR-PUBLIC-IP>` with the Public IPv4 address from the EC2 console.
+
+When prompted:
+
+```
+Are you sure you want to continue connecting (yes/no/[fingerprint])?
+```
+
+Type `yes` and press Enter.
+
+You should now see a prompt like:
+
+```
+ubuntu@ip-172-31-xx-xx:~$
+```
+
+You are now inside the EC2 server. Every command you type from here runs on the remote machine, not your laptop. All Linux commands from the main lab README — `nano`, `chmod`, `ls`, `pm2`, `sudo` — work normally from this point on.
+
+---
+
+
+
+
